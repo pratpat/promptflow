@@ -13,6 +13,7 @@ from typing import Callable, List, Optional
 from promptflow._core.connection_manager import ConnectionManager
 from promptflow._core.tool import STREAMING_OPTION_PARAMETER_ATTR
 from promptflow._core.tools_manager import BuiltinsManager, ToolLoader, connection_type_to_api_mapping
+from promptflow._utils.logger_utils import logger
 from promptflow._utils.multimedia_utils import create_image, load_multimedia_data_recursively
 from promptflow._utils.tool_utils import get_inputs_for_prompt_template, get_prompt_param_name_from_func
 from promptflow.contracts._errors import InvalidImageInput
@@ -108,7 +109,10 @@ class ToolResolver:
                 updated_inputs[k].value = create_image(v.value)
             elif isinstance(value_type, ValueType):
                 try:
-                    updated_inputs[k].value = value_type.parse(v.value)
+                    updated_inputs[k].value = v.value
+                    # Log a warning if the actual type is not the same as the expected type.
+                    if not isinstance(updated_inputs[k].value, value_type._get_python_type()):
+                        logger.warning(f"Literal node input {k} is not type {value_type}, received type is {type(v)}.")
                     updated_inputs[k].value = load_multimedia_data_recursively(updated_inputs[k].value)
                 except InvalidImageInput as e:
                     msg = (
