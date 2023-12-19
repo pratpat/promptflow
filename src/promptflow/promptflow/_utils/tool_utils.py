@@ -9,6 +9,8 @@ import re
 from enum import Enum, EnumMeta
 from typing import Any, Callable, Dict, List, Union, get_args, get_origin
 
+from jinja2 import Environment, meta
+
 from promptflow._core._errors import DuplicateToolMappingError
 from promptflow._utils.utils import is_json_serializable
 from promptflow.exceptions import ErrorTarget, UserErrorException
@@ -195,16 +197,19 @@ def get_inputs_for_prompt_template(template_str):
     >>> get_inputs_for_prompt_template(
         template_str="Prompt with only one string input {{str_input}}"
     )
-    {"str_input": InputDefinition(type=[ValueType.STRING])}
+    {"str_input": InputDefinition(type=[ValueType.STRING], ui_hints={"index": 0})}
 
     >>> get_inputs_for_prompt_template(
         template_str="Prompt with image input ![image]({{image_input}}) and string input {{str_input}}"
     )
-    {"image_input": InputDefinition(type=[ValueType.IMAGE]), "str_input": InputDefinition(type=[ValueType.STRING])
+    {
+        "image_input": InputDefinition(type=[ValueType.IMAGE], ui_hints={"index": 0}),
+        "str_input": InputDefinition(type=[ValueType.STRING], ui_hints={"index": 1})
+    }
     """
-    # Define a regular expression pattern to match placeholders with varying whitespace
-    placeholder_pattern = r'\{\{\s*(\w+)\s*\}\}'
-    inputs = [match.group(1) for match in re.finditer(placeholder_pattern, template_str)]
+    env = Environment()
+    template = env.parse(template_str)
+    inputs = sorted(meta.find_undeclared_variables(template), key=lambda x: _find_template_variable_index(template_str, x))
     result_dict = {i: InputDefinition(type=[ValueType.STRING], ui_hints={"index": inputs.index(i)}) for i in inputs}
 
     # currently we only support image type
@@ -213,7 +218,7 @@ def get_inputs_for_prompt_template(template_str):
 
     for match in matches:
         input_name = match.group(2).strip()
-        result_dict[input_name] = InputDefinition([ValueType(match.group(1).strip())])
+        result_dict[input_name] = InputDefinition(type=[ValueType(match.group(1).strip())], ui_hints={"index": inputs.index(input_name)})
 
     return result_dict
 
@@ -350,6 +355,16 @@ def _get_function_path(function):
     else:
         raise UserErrorException("Function has invalid type, please provide callable or function name for function.")
     return func, func_path
+
+
+def _find_template_variable_index(template_str, variable):
+    matches = re.finditer(r'\{([^}]*)\}', template_str)
+
+    for match in matches:
+        if variable in match.group(1):
+            return match.start(1) + match.group(1).find(variable)
+    
+    return 0
 
 
 class RetrieveToolFuncResultError(UserErrorException):
