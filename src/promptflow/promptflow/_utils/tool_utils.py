@@ -111,7 +111,7 @@ def param_to_definition(param, gen_custom_type_conn=False) -> (InputDefinition, 
 
 
 def function_to_interface(
-    f: Callable, initialize_inputs=None, gen_custom_type_conn=False, skip_prompt_template=False
+    f: Callable, initialize_inputs=None, gen_custom_type_conn=False, skip_prompt_template=False, add_ui_hints=True
 ) -> tuple:
     sign = inspect.signature(f)
     all_inputs = {}
@@ -141,9 +141,10 @@ def function_to_interface(
 
         input_def, is_connection = param_to_definition(v, gen_custom_type_conn=gen_custom_type_conn)
         # Set ui_hints and index
-        if input_def.ui_hints is None:
-            input_def.ui_hints = {}
-        input_def.ui_hints['index'] = input_index
+        if add_ui_hints:
+            if input_def.ui_hints is None:
+                input_def.ui_hints = {}
+            input_def.ui_hints['index'] = input_index
 
         input_index += 1
         input_defs[k] = input_def
