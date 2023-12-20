@@ -141,6 +141,8 @@ class TestToolsManager:
     def test_collect_package_tools_set_defaut_input_index(self):
         tool = "my_tool_package.tools.tool_with_cascading_inputs.my_tool"
         package_tools = collect_package_tools([tool])
+        print("package_tools: ", package_tools)
+        print("package_tools keys: ", package_tools.keys())
         assert package_tools[tool]['inputs']['user_type']['ui_hints']['index'] == 0
         assert package_tools[tool]['inputs']['teacher_id']['ui_hints']['index'] == 2
 
